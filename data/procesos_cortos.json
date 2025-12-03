@@ -1,0 +1,32 @@
+[
+  {
+    "pid": "S1",
+    "arrival_time": 0,
+    "burst_time": 2,
+    "priority": 1
+  },
+  {
+    "pid": "S2",
+    "arrival_time": 1,
+    "burst_time": 1,
+    "priority": 2
+  },
+  {
+    "pid": "S3",
+    "arrival_time": 2,
+    "burst_time": 3,
+    "priority": 1
+  },
+  {
+    "pid": "S4",
+    "arrival_time": 3,
+    "burst_time": 2,
+    "priority": 3
+  },
+  {
+    "pid": "S5",
+    "arrival_time": 4,
+    "burst_time": 1,
+    "priority": 2
+  }
+]
