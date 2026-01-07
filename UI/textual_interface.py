@@ -234,6 +234,16 @@ class LoadFileScreen(Screen):
         width: 50;
         margin: 1;
     }
+    
+    #load-btn {
+        width: 25;
+        margin: 1;
+    }
+    
+    #instructions {
+        margin: 1;
+        color: $text-muted;
+    }
     """
     
     def __init__(self, parent_app):
@@ -255,22 +265,24 @@ class LoadFileScreen(Screen):
                         if f.endswith(('.json', '.txt', '.csv')) and f != "simulation_history.json"]
             
             if files:
-                yield Static("Archivos disponibles:", classes="metric-label")
+                yield Static("Archivos disponibles (seleccione con Enter o doble clic para cargar):", classes="metric-label")
                 yield DataTable(id="file-list")
+                yield Static("", id="spacer1")
             else:
                 yield Static("No hay archivos en la carpeta 'data/'.", id="no-files")
             
-            yield Static("O ingrese el nombre del archivo:", classes="metric-label")
+            yield Static("O ingrese el nombre del archivo manualmente:", classes="metric-label")
+            yield Static("(Presione Enter o haga clic en 'Cargar' para confirmar)", id="instructions")
             with Horizontal():
                 yield Input(placeholder="ej: conjunto1.json", id="file-input")
-                yield Button("Cargar", id="load-btn")
+                yield Button("Cargar", id="load-btn", variant="primary")
             
             yield Button("Volver", id="back-btn")
     
     def on_mount(self) -> None:
         """Carga la lista de archivos"""
-        table = self.query_one("#file-list", DataTable, can_raise=False)
-        if table:
+        try:
+            table = self.query_one("#file-list", DataTable)
             table.add_columns("#", "Nombre del archivo")
             data_dir = "data"
             if os.path.exists(data_dir):
@@ -278,6 +290,8 @@ class LoadFileScreen(Screen):
                         if f.endswith(('.json', '.txt', '.csv')) and f != "simulation_history.json"]
                 for i, file in enumerate(files, 1):
                     table.add_row(str(i), file)
+        except:
+            pass  # La tabla no existe (no hay archivos disponibles)
     
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Maneja clicks en botones"""
@@ -287,11 +301,42 @@ class LoadFileScreen(Screen):
             self.dismiss()
     
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        """Cuando se selecciona un archivo de la tabla"""
-        row_key = event.data_table.get_row(event.cursor_row)
-        filename = row_key[1]  # El nombre del archivo está en la segunda columna
-        input_widget = self.query_one("#file-input", Input)
-        input_widget.value = filename
+        """Cuando se selecciona un archivo de la tabla - carga automáticamente"""
+        try:
+            row_data = event.data_table.get_row(event.cursor_row)
+            filename = row_data[1]  # El nombre del archivo está en la segunda columna
+            input_widget = self.query_one("#file-input", Input)
+            input_widget.value = filename
+            # Cargar automáticamente cuando se selecciona de la tabla
+            self.load_file_with_name(filename)
+        except Exception as e:
+            self.notify(f"❌ Error al seleccionar archivo: {e}", severity="error")
+    
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Maneja cuando se presiona Enter en el campo de entrada"""
+        if event.input.id == "file-input":
+            self.load_file()
+    
+    def load_file_with_name(self, filename: str):
+        """Carga un archivo directamente por nombre"""
+        filename = filename.strip()
+        
+        if not filename:
+            return
+        
+        # Si no tiene extensión, agregar .json por defecto
+        if '.' not in filename:
+            filename += '.json'
+        
+        try:
+            self.parent_app.processes = self.parent_app.file_handler.load_processes(filename)
+            self.parent_app.update_process_table()
+            self.notify(f"✅ Cargados {len(self.parent_app.processes)} procesos exitosamente", severity="success")
+            self.dismiss()
+        except FileNotFoundError:
+            self.notify(f"❌ Archivo no encontrado: {filename}", severity="error")
+        except Exception as e:
+            self.notify(f"❌ Error al cargar archivo: {e}", severity="error")
     
     def load_file(self):
         """Carga el archivo seleccionado"""
